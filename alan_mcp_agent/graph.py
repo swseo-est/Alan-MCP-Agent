@@ -1,43 +1,35 @@
-import sys
+"""MCP client."""
+
 import asyncio
-from contextlib import asynccontextmanager
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.prebuilt import create_react_agent
-
 from dotenv import load_dotenv
-
-
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 load_dotenv()
 
+
+SERVER_CONFIGS = {
+    "playwright": {
+        "url": "http://localhost:8931/mcp",
+        "transport": "streamable_http",
+    },
+}
+
+client = MultiServerMCPClient(SERVER_CONFIGS)
+
 async def make_graph():
-    client = MultiServerMCPClient(
-        {
-            "playwright-mcp": {
-                "command": "npx",
-                "args": [
-                    "-y",
-                    "@smithery/cli@latest",
-                    "run",
-                    "@microsoft/playwright-mcp",
-                    "--key",
-                    "a457b5a4-cd03-4a13-b2ac-cf99c04f6fc4"
-                ],
-                "transport": "stdio",
-            }
-        }
-    )
+    """make_graph."""
+    async with client.session("playwright") as session:
+        tools = await load_mcp_tools(session)
+        agent = create_react_agent(
+            "openai:gpt-4.1",
+            tools,
+        )
+        print(await agent.ainvoke({"messages": "naver에 접속해줘"}))
+        print(await agent.ainvoke({"messages": "검색창에 가나다 라고 입력해줘"}))
 
-    tools = await client.get_tools()
-    agent = create_react_agent("openai:gpt-4.1", tools)
-    return agent
 
-# print(f"Event loop policy: {asyncio.get_event_loop_policy()}")
-#
-# agent = asyncio.run(make_graph())
-#
-# msg = agent.ainvoke({"messages": "https://www.msit.go.kr/bbs/list.do?sCode=user&mId=311&mPid=121 페이지에서 스위스 박사 과정생 관련 사업을 찾아주고, 있다면 페이지를 열어서 내용을 확인해줘"})
-# print(asyncio.run(msg))
+if __name__ == '__main__':
+    asyncio.run(make_graph())

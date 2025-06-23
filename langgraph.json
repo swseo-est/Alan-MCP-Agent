@@ -1,7 +1,0 @@
-{
-  "dependencies": ["."],
-  "graphs": {
-    "agent": "./alan_mcp_agent/graph.py:make_graph"
-  },
-  "env": ".env"
-}
